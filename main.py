@@ -8,7 +8,7 @@ from discord.ext import commands
 load_dotenv()
 
 intents = discord.Intents.all()
-app = commands.Bot(command_prefix='!', intents=intents)
+app = commands.Bot(command_prefix='`', intents=intents)
 
 
 def check_owner(ctx):
