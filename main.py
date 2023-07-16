@@ -9,18 +9,16 @@ load_dotenv()
 intents = discord.Intents.all()
 app = commands.Bot(command_prefix='!', intents=intents)
 
+async def load_extensions():
+    for filename in os.listdir("Cogs"):
+        if filename.endswith(".py"):
+            await app.load_extension(f"Cogs.{filename[:-3]}")
+
 
 async def main():
     async with app:
+        await load_extensions()
         await app.start(os.getenv("TOKEN"))
 
-
-@app.command(name="ping")
-async def ping(ctx):
-    caller = ctx.author.global_name
-    embed = discord.Embed(title="Ping Test", color=0x79b1c8)
-    embed.add_field(name="caller", value=caller, inline=True)
-    embed.add_field(name="status", value="live", inline=True)
-    await ctx.send(embed=embed)
 
 asyncio.run(main())
