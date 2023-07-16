@@ -9,6 +9,11 @@ load_dotenv()
 intents = discord.Intents.all()
 app = commands.Bot(command_prefix='!', intents=intents)
 
+
+def check_owner(ctx):
+    return ctx.author.id == int(os.getenv("OWNER_ID"))
+
+
 async def load_extensions():
     for filename in os.listdir("Cogs"):
         if filename.endswith(".py"):
@@ -17,6 +22,9 @@ async def load_extensions():
 
 @app.command(name="reload")
 async def reload_extension(ctx, extension=None):
+    if not check_owner(ctx):
+        await ctx.reply("You are not the owner of this bot!")
+        return
     if extension is not None:
         await unload_function(extension)
         try:
@@ -42,6 +50,9 @@ async def reload_extension(ctx, extension=None):
 
 @app.command(name="unload")
 async def unload_extension(ctx, extension=None):
+    if not check_owner(ctx):
+        await ctx.send("You are not the owner of this bot!")
+        return
     if extension is not None:
         await unload_function(extension)
         await ctx.send(f":white_check_mark: {extension}기능을 종료했습니다!")
