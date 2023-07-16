@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 import asyncio
 import discord
+import json
 from discord.ext import commands
 
 load_dotenv()
@@ -11,7 +12,7 @@ app = commands.Bot(command_prefix='!', intents=intents)
 
 
 def check_owner(ctx):
-    return ctx.author.id == int(os.getenv("OWNER_ID"))
+    return ctx.author.id in list(map(int, os.getenv("WHITELIST").split(",")))
 
 
 async def load_extensions():
@@ -21,10 +22,8 @@ async def load_extensions():
 
 
 @app.command(name="reload")
+@commands.check(check_owner)
 async def reload_extension(ctx, extension=None):
-    if not check_owner(ctx):
-        await ctx.reply("You are not the owner of this bot!")
-        return
     if extension is not None:
         await unload_function(extension)
         try:
@@ -49,10 +48,8 @@ async def reload_extension(ctx, extension=None):
 
 
 @app.command(name="unload")
+@commands.check(check_owner)
 async def unload_extension(ctx, extension=None):
-    if not check_owner(ctx):
-        await ctx.send("You are not the owner of this bot!")
-        return
     if extension is not None:
         await unload_function(extension)
         await ctx.send(f":white_check_mark: {extension}기능을 종료했습니다!")
