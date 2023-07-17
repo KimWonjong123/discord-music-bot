@@ -91,10 +91,10 @@ class Music(commands.Cog):
     async def play(self, ctx, *args):
         query = " ".join(args)
         voice_client = ctx.voice_client
-        voice_channel = ctx.author.voice.channel
-        if voice_channel is None:
+        if ctx.author.voice is None:
             await ctx.send("Join voice channel first")
             return
+        voice_channel = ctx.author.voice.channel
         if voice_client is None:
             await voice_channel.connect(self_deaf=True)
             voice_client = ctx.voice_client
