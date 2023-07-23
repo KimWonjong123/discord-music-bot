@@ -1,13 +1,18 @@
 import asyncio
-
+import os
 import discord
 from discord import FFmpegPCMAudio
 from discord.ext import commands
 from youtube_dl import YoutubeDL
+from dotenv import load_dotenv
+
+load_dotenv()
+
+filters = list(os.getenv("FILTERS").split(","))
 
 
 async def callback(ctx):
-    if ctx.invoked_with in ["join", "play"]:
+    if ctx.invoked_with in ["join", "play", "p"]:
         title = "Connected to voice channel"
     elif ctx.invoked_with == "leave":
         title = "Leaving voice channel"
@@ -15,6 +20,12 @@ async def callback(ctx):
     embed = discord.Embed(title=title, color=0x79b1c8)
     embed.add_field(name="", value=channel.name, inline=True)
     await asyncio.create_task(ctx.send(embed=embed))
+
+def check_filters(info):
+    for k in filters:
+        for s in info.values():
+            if k in str(s).lower():
+                return True
 
 
 class Music(commands.Cog):
@@ -36,6 +47,11 @@ class Music(commands.Cog):
                 info = ydl.extract_info(f"ytsearch:{arg}", download=False)['entries'][0]
             except Exception as e:
                 return False
+        try:
+            if check_filters(info):
+                return False
+        except Exception as e:
+            print(e)
         return {'source': info['formats'][0]['url'], 'title': info['title']}
 
     def play_next(self, ctx):
