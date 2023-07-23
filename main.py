@@ -76,6 +76,7 @@ async def unload_function(extension=None):
 async def main():
     async with app:
         await load_extensions()
+        print("========== MUSIC BOT STARTED!! ==========")
         await app.start(os.getenv("TOKEN"))
 
 
