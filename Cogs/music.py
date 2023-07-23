@@ -39,6 +39,7 @@ class Music(commands.Cog):
         return {'source': info['formats'][0]['url'], 'title': info['title']}
 
     def play_next(self):
+        self.now_playing = None
         if len(self.queue) > 0:
             m_url = self.queue[0][0]['source']
             self.queue.pop(0)
