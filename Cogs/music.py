@@ -38,12 +38,12 @@ class Music(commands.Cog):
                 return False
         return {'source': info['formats'][0]['url'], 'title': info['title']}
 
-    def play_next(self):
+    def play_next(self, ctx):
         self.now_playing = None
         if len(self.queue) > 0:
             m_url = self.queue[0][0]['source']
             self.queue.pop(0)
-            self.voice.play(FFmpegPCMAudio(m_url, **self.FFMPEG_OPTS), after=lambda e: self.play_next())
+            ctx.voice_client.play(FFmpegPCMAudio(m_url, **self.FFMPEG_OPTS), after=lambda e: self.play_next())
         else:
             self.is_playing = False
 
@@ -83,7 +83,7 @@ class Music(commands.Cog):
             voice_client = ctx.voice_client
             m_url = self.queue[0][0]['source']
             try:
-                voice_client.play(FFmpegPCMAudio(m_url, **self.FFMPEG_OPTS), after=lambda e: self.play_next())
+                voice_client.play(FFmpegPCMAudio(m_url, **self.FFMPEG_OPTS), after=lambda e: self.play_next(ctx))
                 await asyncio.create_task(ctx.send(f"Now playing {self.queue[0][0]['title']}"))
                 self.now_playing = self.queue[0][0]['title']
             except Exception as err:
