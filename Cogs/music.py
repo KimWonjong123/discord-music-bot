@@ -7,14 +7,14 @@ from youtube_dl import YoutubeDL
 
 
 async def callback(ctx):
-    if ctx.invoked_with == "join":
+    if ctx.invoked_with in ["join", "play"]:
         title = "Connected to voice channel"
     elif ctx.invoked_with == "leave":
         title = "Leaving voice channel"
     channel = ctx.author.voice.channel
     embed = discord.Embed(title=title, color=0x79b1c8)
     embed.add_field(name="", value=channel.name, inline=True)
-    await ctx.send(embed=embed)
+    await asyncio.create_task(ctx.send(embed=embed))
 
 
 class Music(commands.Cog):
@@ -51,27 +51,29 @@ class Music(commands.Cog):
         if ctx.author.voice is None:
             await ctx.send("Join voice channel first")
             return
+        self.now_playing = None
         if ctx.me.voice is None:
-            await ctx.author.voice.channel.connect()
+            await asyncio.create_task(ctx.author.voice.channel.connect())
         else:
             if ctx.me.voice.channel == ctx.author.voice.channel:
                 await ctx.send("Already in the same channel")
                 return
-            await ctx.voice_client.move_to(ctx.author.voice.channel)
+            ctx.voice_client.stop()
+            await asyncio.create_task(ctx.voice_client.move_to(ctx.author.voice.channel))
         await callback(ctx)
 
     @commands.command(name="leave")
     async def leave(self, ctx):
         if ctx.me.voice is not None:
-            self.queue = []
+            self.queue.clear()
             self.now_playing = None
             try:
                 self.voice.stop()
             except Exception:
                 pass
-            await ctx.voice_client.disconnect(force=True)
+            await asyncio.create_task(ctx.voice_client.disconnect(force=True))
         else:
-            await ctx.send("Not connected to any voice channel")
+            await asyncio.create_task(ctx.send("Not connected to any voice channel"))
             return
         await callback(ctx)
 
@@ -81,7 +83,7 @@ class Music(commands.Cog):
             m_url = self.queue[0][0]['source']
             try:
                 voice_client.play(FFmpegPCMAudio(m_url, **self.FFMPEG_OPTS), after=lambda e: self.play_next())
-                await ctx.send(f"Now playing {self.queue[0][0]['title']}")
+                await asyncio.create_task(ctx.send(f"Now playing {self.queue[0][0]['title']}"))
                 self.now_playing = self.queue[0][0]['title']
             except Exception as err:
                 print(err)
@@ -97,12 +99,14 @@ class Music(commands.Cog):
         voice_channel = ctx.author.voice.channel
         if voice_client is None:
             await voice_channel.connect(self_deaf=True)
+            await asyncio.create_task(callback(ctx))
             voice_client = ctx.voice_client
         elif voice_client.channel != voice_channel:
             voice_client.stop()
-            await self.clear_queue(ctx)
+            await asyncio.create_task(self.clear_queue(ctx))
             await voice_client.move_to(voice_channel)
-            await asyncio.sleep(1)
+            await asyncio.create_task(callback(ctx))
+            await asyncio.sleep(0.5)
 
         if voice_client.is_paused():
             voice_client.resume()
@@ -111,7 +115,7 @@ class Music(commands.Cog):
             if not song:
                 await ctx.send("Could not download the song. Incorrect format try another keyword")
             else:
-                await ctx.send(f"Added {song['title']} to the queue")
+                await asyncio.create_task(ctx.send(f"Added {song['title']} to the queue"))
                 self.queue.append([song, voice_channel])
                 if not voice_client.is_playing():
                     await self.play_music(ctx)
