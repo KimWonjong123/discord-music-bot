@@ -12,9 +12,9 @@ filters = list(os.getenv("FILTERS").split(","))
 
 
 async def callback(ctx):
-    if ctx.invoked_with in ["join", "play", "p"]:
+    if ctx.invoked_with in ["join", "play", 'p', '재생', 'ㅈㅅ', 'ㅍㄹㅇ', 'ㅍ', 'j', '참가', 'ㅊㄱ', '들어와', 'ㄷㅇㄹ']:
         title = "Connected to voice channel"
-    elif ctx.invoked_with == "leave":
+    elif ctx.invoked_with in ["leave", 'l', '나가', 'ㄴㄱ']:
         title = "Leaving voice channel"
     channel = ctx.author.voice.channel
     embed = discord.Embed(title=title, color=0x79b1c8)
@@ -63,7 +63,7 @@ class Music(commands.Cog):
         else:
             self.is_playing = False
 
-    @commands.command(name="join")
+    @commands.command(name="join", aliases=['j', '참가', 'ㅊㄱ', '들어와', 'ㄷㅇㄹ'])
     async def join(self, ctx):
         if ctx.author.voice is None:
             await ctx.send("Join voice channel first")
@@ -79,7 +79,7 @@ class Music(commands.Cog):
             await asyncio.create_task(ctx.voice_client.move_to(ctx.author.voice.channel))
         await callback(ctx)
 
-    @commands.command(name="leave")
+    @commands.command(name="leave", aliases=['l', '나가', 'ㄴㄱ'])
     async def leave(self, ctx):
         if ctx.me.voice is not None:
             self.queue.clear()
@@ -106,7 +106,7 @@ class Music(commands.Cog):
                 print(err)
             self.queue.pop(0)
 
-    @commands.command(name="play", aliases=['p', 'playing'], help="Plays a selected song from youtube")
+    @commands.command(name="play", aliases=['p', '재생', 'ㅈㅅ', 'ㅍㄹㅇ', 'ㅍ'], help="Plays a selected song from youtube")
     async def play(self, ctx, *args):
         query = " ".join(args)
         voice_client = ctx.voice_client
@@ -137,7 +137,7 @@ class Music(commands.Cog):
                 if not voice_client.is_playing():
                     await self.play_music(ctx)
 
-    @commands.command(name="pause", help="Pauses the current song")
+    @commands.command(name="pause", aliases=['일시정지', '정지', 'ㅈㅈ', '멈춰' 'ㅁㅊ'],help="Pauses the current song")
     async def pause(self, ctx):
         voice_client = ctx.voice_client
         if voice_client.channel == ctx.author.voice.channel and ctx.author.voice is not None:
@@ -162,7 +162,7 @@ class Music(commands.Cog):
         else:
             await ctx.send("Not in the same channel or Join voice channel first to resume")
 
-    @commands.command(name="skip", help="Skips the current song")
+    @commands.command(name="skip", help="Skips the current song", aliases=['s', '다음', '다음곡', 'ㄷㅇ', '넘겨'])
     async def skip(self, ctx):
         voice_client = ctx.voice_client
         if voice_client.is_connected() and voice_client.is_playing() or voice_client.is_paused()\
@@ -173,7 +173,7 @@ class Music(commands.Cog):
         else:
             await ctx.send("Not connected to any voice channel or not playing")
 
-    @commands.command(name="queue", aliases=['q'], help="Shows the current queue")
+    @commands.command(name="queue", aliases=['q', '큐', 'ㅋ', '대기열', 'ㄷㄱㅇ'], help="Shows the current queue")
     async def queue_info(self, ctx):
         voice_client = ctx.voice_client
         if voice_client.is_connected():
@@ -188,7 +188,7 @@ class Music(commands.Cog):
         else:
             await ctx.send("Not connected to any voice channel")
 
-    @commands.command(name="clear", help="Clears the current queue")
+    @commands.command(name="clear", help="Clears the current queue", aliases=['c', '클리어', 'ㅋㄹㅇ'])
     async def clear_queue(self, ctx):
         voice_client = ctx.voice_client
         if voice_client.is_connected() and voice_client.channel == ctx.author.voice.channel:
@@ -196,7 +196,7 @@ class Music(commands.Cog):
         self.queue.clear()
         await ctx.send("Queue cleared")
 
-    @commands.command(name="nowplaying", aliases=['np'], help="Shows the current playing song")
+    @commands.command(name="nowplaying", aliases=['np', '재생중', 'ㅈㅅㅈ', '현재', '현재재생중', 'ㅎㅈ'], help="Shows the current playing song")
     async def now_playing(self, ctx):
         voice_client = ctx.voice_client
         if voice_client.is_connected() and self.now_playing is not None:
