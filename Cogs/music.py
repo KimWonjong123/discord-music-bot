@@ -3,8 +3,11 @@ import os
 import discord
 from discord import FFmpegPCMAudio
 from discord.ext import commands
-from youtube_dl import YoutubeDL
+from googleapiclient.discovery import build
+from yt_dlp import YoutubeDL
 from dotenv import load_dotenv
+from datetime import datetime
+from isodate import parse_duration
 
 load_dotenv()
 
@@ -21,11 +24,22 @@ async def callback(ctx):
     embed.add_field(name="", value=channel.name, inline=True)
     await asyncio.create_task(ctx.send(embed=embed))
 
+
 def check_filters(info):
     for k in filters:
         for s in info.values():
             if k in str(s).lower():
                 return True
+
+
+def info_to_dict(video_id, title, uploader):
+    result = {
+        "id": video_id,
+        "url": f'https://youtu.be/{video_id}',
+        "title": title,
+        "uploader": uploader,
+    }
+    return result
 
 
 class Music(commands.Cog):
@@ -37,9 +51,12 @@ class Music(commands.Cog):
         self.is_playing = False
         self.is_paused = False
         self.now_playing = None
-        self.YDL_OPTIONS = {'format': 'bestaudio', 'noplaylist': 'True',}
+        self.YDL_OPTIONS = {'format': 'bestaudio', 'noplaylist': 'True', }
         self.FFMPEG_OPTS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
                             'options': '-vn'}
+        self.youtube = build(os.getenv('YOUTUBE_API_SERVICE_NAME'),
+                             os.getenv('YOUTUBE_API_VERSION'),
+                             developerKey=os.getenv('YOUTUBE_API_KEY'))
 
     def search(self, arg):
         with YoutubeDL(self.YDL_OPTIONS) as ydl:
@@ -52,7 +69,7 @@ class Music(commands.Cog):
                 return False
         except Exception as e:
             print(e)
-        return {'source': info['formats'][0]['url'], 'title': info['title']}
+        return {'source': info['url'], 'title': info['title']}
 
     def play_next(self, ctx):
         self.now_playing = None
@@ -78,6 +95,41 @@ class Music(commands.Cog):
             ctx.voice_client.stop()
             await asyncio.create_task(ctx.voice_client.move_to(ctx.author.voice.channel))
         await callback(ctx)
+
+    @commands.command(name="search", alliases=['검색', 'ㄱㅅ'])
+    async def search_videos(self, ctx, *args):
+        if ctx.author.voice is None:
+            await ctx.send("Join voice channel first")
+            return
+        query = " ".join(args)
+        video_list = self.youtube.search().list(
+            q=query,
+            order="relevance",
+            part="snippet",
+            maxResults=10,
+            type="video",
+        ).execute()
+        result_json = {}
+        for i, item in enumerate(video_list['items']):
+            result_json[i] = info_to_dict(item['id']['videoId'],
+                                          item['snippet']['title'],
+                                          item['snippet']['channelTitle'])
+        result_text = ''
+        for k, v in result_json.items():
+            video_info = self.youtube.videos().list(
+                part="contentDetails",
+                id=v['id'],
+            ).execute()
+            duration = str(parse_duration(video_info['items'][0]['contentDetails']['duration']))
+            hours = int(duration.split(":")[0])
+            minutes = int(duration.split(":")[1])
+            seconds = int(duration.split(":")[2])
+            if hours:
+                minutes += hours * 60
+            duration = '{:02d}:{:02d}'.format(minutes, seconds)
+            result_text += f"**{k + 1}.** [*{v['title']}* | {v['uploader']}]({v['url']})  ``{duration}``\n"
+        embed = discord.Embed(title="Search results", description=result_text, color=0x79b1c8)
+        await ctx.send(embed=embed)
 
     @commands.command(name="leave", aliases=['l', '나가', 'ㄴㄱ'])
     async def leave(self, ctx):
@@ -137,7 +189,7 @@ class Music(commands.Cog):
                 if not voice_client.is_playing():
                     await self.play_music(ctx)
 
-    @commands.command(name="pause", aliases=['일시정지', '정지', 'ㅈㅈ', '멈춰' 'ㅁㅊ'],help="Pauses the current song")
+    @commands.command(name="pause", aliases=['일시정지', '정지', 'ㅈㅈ', '멈춰' 'ㅁㅊ'], help="Pauses the current song")
     async def pause(self, ctx):
         voice_client = ctx.voice_client
         if voice_client.channel == ctx.author.voice.channel and ctx.author.voice is not None:
@@ -165,7 +217,7 @@ class Music(commands.Cog):
     @commands.command(name="skip", help="Skips the current song", aliases=['s', '다음', '다음곡', 'ㄷㅇ', '넘겨'])
     async def skip(self, ctx):
         voice_client = ctx.voice_client
-        if voice_client.is_connected() and voice_client.is_playing() or voice_client.is_paused()\
+        if voice_client.is_connected() and voice_client.is_playing() or voice_client.is_paused() \
                 and voice_client.channel == ctx.author.voice.channel:
             self.now_playing = None
             voice_client.stop()
@@ -181,7 +233,7 @@ class Music(commands.Cog):
             retval = ""
             for i in range(len(self.queue)):
                 retval = f"{i + 1}. {self.queue[i][0]['title']}"
-                embed.add_field(name=retval,  value="", inline=False)
+                embed.add_field(name=retval, value="", inline=False)
             if retval == "":
                 embed.add_field(name="Queue is currently empty", value="", inline=False)
             await ctx.send(embed=embed)
@@ -196,7 +248,8 @@ class Music(commands.Cog):
         self.queue.clear()
         await ctx.send("Queue cleared")
 
-    @commands.command(name="nowplaying", aliases=['np', '재생중', 'ㅈㅅㅈ', '현재', '현재재생중', 'ㅎㅈ'], help="Shows the current playing song")
+    @commands.command(name="nowplaying", aliases=['np', '재생중', 'ㅈㅅㅈ', '현재', '현재재생중', 'ㅎㅈ'],
+                      help="Shows the current playing song")
     async def now_playing(self, ctx):
         voice_client = ctx.voice_client
         if voice_client.is_connected() and self.now_playing is not None:
