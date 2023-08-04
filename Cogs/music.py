@@ -6,7 +6,6 @@ from discord.ext import commands
 from googleapiclient.discovery import build
 from yt_dlp import YoutubeDL
 from dotenv import load_dotenv
-from datetime import datetime
 from isodate import parse_duration
 
 load_dotenv()
