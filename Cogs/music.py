@@ -144,7 +144,7 @@ class Music(commands.Cog):
     @commands.command(name="search", alliases=['검색', 'ㄱㅅ'])
     async def search_videos(self, ctx, *args):
         query = " ".join(args)
-        video_list = self.search_list(query, 10)
+        video_list = self.search_list(query, int(os.getenv('SEARCH_PAGE_SIZE')))
         result = []
         for item in video_list:
             duration = item['duration']
