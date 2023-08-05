@@ -3,11 +3,14 @@ from dotenv import load_dotenv
 import asyncio
 import discord
 from discord.ext import commands
+import logging
+
+handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
 
 load_dotenv()
 
 intents = discord.Intents.all()
-app = commands.Bot(command_prefix=os.getenv('COMMAND_PREFIX'), intents=intents)
+app = commands.Bot(command_prefix=os.getenv('COMMAND_PREFIX'), intents=intents, log_handler=handler, log_level=logging.DEBUG)
 
 
 def check_owner(ctx):
@@ -76,7 +79,7 @@ async def main():
     async with app:
         await load_extensions()
         print("========== MUSIC BOT STARTED!! ==========")
-        await app.start(os.getenv("TOKEN"))
+        await app.start(os.getenv("TOKEN"), reconnect=True)
 
 
 asyncio.run(main())

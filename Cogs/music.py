@@ -3,7 +3,6 @@ import os
 import discord
 from discord import FFmpegPCMAudio
 from discord.ext import commands
-from googleapiclient.discovery import build
 from yt_dlp import YoutubeDL
 from dotenv import load_dotenv
 
@@ -30,14 +29,12 @@ def check_filters(info):
                 return True
 
 
-def info_to_dict(title, uploader, view_count, original_url, thumbnail, like_count, duration):
+def info_to_dict(title, uploader, original_url, thumbnail, duration):
     result = {
         "title": title,
         "uploader": uploader,
-        "view_count": view_count,
         "url": original_url,
         "thumbnail": thumbnail,
-        "like_count": like_count,
         "duration": duration,
     }
     return result
@@ -49,10 +46,8 @@ class SelectMusic(discord.ui.Select):
         self.info = music_info
         self.ctx = ctx
         for idx, info in enumerate(music_info):
-            options.append(discord.SelectOption(label=f"[{info['title']}]  |  {info['uploader']}",
-                                                description=f"조회수: {format(info['view_count'], ',')} "
-                                                            f"좋아요: {format(info['like_count'], ',')} "
-                                                            f"재생시간: {info['duration']}",
+            options.append(discord.SelectOption(label=f"{info['title']}",
+                                                description=f"{info['uploader']}  |  재생시간: {info['duration']}",
                                                 value=idx))
         super().__init__(placeholder='음악 선택', min_values=1, max_values=1, options=options)
 
@@ -149,17 +144,7 @@ class Music(commands.Cog):
     @commands.command(name="search", alliases=['검색', 'ㄱㅅ'])
     async def search_videos(self, ctx, *args):
         query = " ".join(args)
-        # try:
-        #     video_list = self.youtube.search().list(
-        #         q=query,
-        #         order="relevance",
-        #         part="snippet",
-        #         maxResults=10,
-        #         type="video",
-        #     ).execute()
-        # except Exception as e:
-        #     print(e)
-        video_list = self.search_list(query, 5)
+        video_list = self.search_list(query, 10)
         result = []
         for item in video_list:
             duration = item['duration']
@@ -169,29 +154,11 @@ class Music(commands.Cog):
             duration = '{:d}:{:02d}'.format(minutes, seconds)
             result.append(info_to_dict(item['title'],
                                        item['uploader'],
-                                       item['view_count'],
                                        item['original_url'],
                                        item['thumbnails'][0]['url'],
-                                       item['like_count'],
                                        duration))
         view = SelectView(result, ctx)
         await ctx.send("검색 결과", view=view)
-        # result_text = ''
-        # for k, v in result_json.items():
-        #     video_info = self.youtube.videos().list(
-        #         part="contentDetails",
-        #         id=v['id'],
-        #     ).execute()
-        #     duration = str(parse_duration(video_info['items'][0]['contentDetails']['duration']))
-        #     hours = int(duration.split(":")[0])
-        #     minutes = int(duration.split(":")[1])
-        #     seconds = int(duration.split(":")[2])
-        #     if hours:
-        #         minutes += hours * 60
-        #     duration = '{:02d}:{:02d}'.format(minutes, seconds)
-        #     result_text += f"**{k + 1}.** [*{v['title']}* | {v['uploader']}]({v['url']})  ``{duration}``\n"
-        # embed = discord.Embed(title="Search results", description=result_text, color=0x79b1c8)
-        # await ctx.send(embed=embed)
 
     @commands.command(name="leave", aliases=['l', '나가', 'ㄴㄱ'])
     async def leave(self, ctx):
