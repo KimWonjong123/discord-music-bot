@@ -96,9 +96,9 @@ class Music(commands.Cog):
         self.YDL_OPTIONS = {'format': 'bestaudio', 'noplaylist': 'True', }
         self.FFMPEG_OPTS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
                             'options': '-vn'}
-        self.youtube = build(os.getenv('YOUTUBE_API_SERVICE_NAME'),
-                             os.getenv('YOUTUBE_API_VERSION'),
-                             developerKey=os.getenv('YOUTUBE_API_KEY'))
+        # self.youtube = build(os.getenv('YOUTUBE_API_SERVICE_NAME'),
+        #                      os.getenv('YOUTUBE_API_VERSION'),
+        #                      developerKey=os.getenv('YOUTUBE_API_KEY'))
 
     def search(self, arg):
         with YoutubeDL(self.YDL_OPTIONS) as ydl:
