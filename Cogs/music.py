@@ -6,7 +6,6 @@ from discord.ext import commands
 from googleapiclient.discovery import build
 from yt_dlp import YoutubeDL
 from dotenv import load_dotenv
-from isodate import parse_duration
 
 load_dotenv()
 
@@ -14,7 +13,7 @@ filters = list(os.getenv("FILTERS").split(","))
 
 
 async def callback(ctx):
-    if ctx.invoked_with in ["join", "play", 'p', '재생', 'ㅈㅅ', 'ㅍㄹㅇ', 'ㅍ', 'j', '참가', 'ㅊㄱ', '들어와', 'ㄷㅇㄹ']:
+    if ctx.invoked_with in ["join", "play", 'p', '재생', 'ㅈㅅ', 'ㅍㄹㅇ', 'ㅍ', 'j', '참가', 'ㅊㄱ', '들어와', 'ㄷㅇㄹ', 'search', 'ㄱㅅ', '검색']:
         title = "Connected to voice channel"
     elif ctx.invoked_with in ["leave", 'l', '나가', 'ㄴㄱ']:
         title = "Leaving voice channel"
@@ -31,14 +30,58 @@ def check_filters(info):
                 return True
 
 
-def info_to_dict(video_id, title, uploader):
+def info_to_dict(title, uploader, view_count, original_url, thumbnail, like_count, duration):
     result = {
-        "id": video_id,
-        "url": f'https://youtu.be/{video_id}',
         "title": title,
         "uploader": uploader,
+        "view_count": view_count,
+        "url": original_url,
+        "thumbnail": thumbnail,
+        "like_count": like_count,
+        "duration": duration,
     }
     return result
+
+
+class SelectMusic(discord.ui.Select):
+    def __init__(self, music_info: list[dict], ctx: commands.Context):
+        options = []
+        self.info = music_info
+        self.ctx = ctx
+        for idx, info in enumerate(music_info):
+            options.append(discord.SelectOption(label=f"[{info['title']}]  |  {info['uploader']}",
+                                                description=f"조회수: {format(info['view_count'], ',')} "
+                                                            f"좋아요: {format(info['like_count'], ',')} "
+                                                            f"재생시간: {info['duration']}",
+                                                value=idx))
+        super().__init__(placeholder='음악 선택', min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        info = self.info[int(interaction.data["values"][0])]
+        embed = discord.Embed(title='선택한 음악',
+                              color=0x79b1c8,
+                              description=f"### [{info['title']}"
+                                          "  |  "
+                                          f"{info['uploader']}]({info['url']})")
+        embed.set_thumbnail(url=info['thumbnail'])
+        await interaction.response.send_message(embed=embed)
+        await interaction.message.delete()
+        await self.ctx.invoke(self.ctx.bot.get_command('play'), info['url'])
+
+
+class CancelButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(style=discord.ButtonStyle.red, label="취소", row=1)
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.message.delete()
+
+
+class SelectView(discord.ui.View):
+    def __init__(self, music_info: list[dict], ctx: commands.Context):
+        super().__init__()
+        self.add_item(SelectMusic(music_info, ctx))
+        self.add_item(CancelButton())
 
 
 class Music(commands.Cog):
@@ -63,19 +106,27 @@ class Music(commands.Cog):
                 info = ydl.extract_info(f"ytsearch:{arg}", download=False)['entries'][0]
             except Exception as e:
                 return False
-        try:
-            if check_filters(info):
-                return False
-        except Exception as e:
-            print(e)
+        if check_filters(info):
+            return False
         return {'source': info['url'], 'title': info['title']}
+
+    def search_list(self, arg, quantity):
+        with YoutubeDL(self.YDL_OPTIONS) as ydl:
+            try:
+                info = ydl.extract_info(f"ytsearch{quantity}:{arg}", download=False)['entries']
+            except Exception as e:
+                return False
+        for entry in info:
+            if check_filters(entry):
+                info.remove(entry)
+        return info
 
     def play_next(self, ctx):
         self.now_playing = None
         if len(self.queue) > 0:
             m_url = self.queue[0][0]['source']
             self.queue.pop(0)
-            ctx.voice_client.play(FFmpegPCMAudio(m_url, **self.FFMPEG_OPTS), after=lambda e: self.play_next())
+            ctx.voice_client.play(FFmpegPCMAudio(m_url, **self.FFMPEG_OPTS), after=lambda e: self.play_next(ctx))
         else:
             self.is_playing = False
 
@@ -97,38 +148,49 @@ class Music(commands.Cog):
 
     @commands.command(name="search", alliases=['검색', 'ㄱㅅ'])
     async def search_videos(self, ctx, *args):
-        if ctx.author.voice is None:
-            await ctx.send("Join voice channel first")
-            return
         query = " ".join(args)
-        video_list = self.youtube.search().list(
-            q=query,
-            order="relevance",
-            part="snippet",
-            maxResults=10,
-            type="video",
-        ).execute()
-        result_json = {}
-        for i, item in enumerate(video_list['items']):
-            result_json[i] = info_to_dict(item['id']['videoId'],
-                                          item['snippet']['title'],
-                                          item['snippet']['channelTitle'])
-        result_text = ''
-        for k, v in result_json.items():
-            video_info = self.youtube.videos().list(
-                part="contentDetails",
-                id=v['id'],
-            ).execute()
-            duration = str(parse_duration(video_info['items'][0]['contentDetails']['duration']))
-            hours = int(duration.split(":")[0])
-            minutes = int(duration.split(":")[1])
-            seconds = int(duration.split(":")[2])
-            if hours:
-                minutes += hours * 60
+        # try:
+        #     video_list = self.youtube.search().list(
+        #         q=query,
+        #         order="relevance",
+        #         part="snippet",
+        #         maxResults=10,
+        #         type="video",
+        #     ).execute()
+        # except Exception as e:
+        #     print(e)
+        video_list = self.search_list(query, 5)
+        result = []
+        for item in video_list:
+            duration = item['duration']
+            seconds, duration = duration % 60, duration // 60
+            minutes = duration % 60
             duration = '{:02d}:{:02d}'.format(minutes, seconds)
-            result_text += f"**{k + 1}.** [*{v['title']}* | {v['uploader']}]({v['url']})  ``{duration}``\n"
-        embed = discord.Embed(title="Search results", description=result_text, color=0x79b1c8)
-        await ctx.send(embed=embed)
+            result.append(info_to_dict(item['title'],
+                                       item['uploader'],
+                                       item['view_count'],
+                                       item['original_url'],
+                                       item['thumbnails'][0]['url'],
+                                       item['like_count'],
+                                       duration))
+        view = SelectView(result, ctx)
+        await ctx.send("검색 결과", view=view)
+        # result_text = ''
+        # for k, v in result_json.items():
+        #     video_info = self.youtube.videos().list(
+        #         part="contentDetails",
+        #         id=v['id'],
+        #     ).execute()
+        #     duration = str(parse_duration(video_info['items'][0]['contentDetails']['duration']))
+        #     hours = int(duration.split(":")[0])
+        #     minutes = int(duration.split(":")[1])
+        #     seconds = int(duration.split(":")[2])
+        #     if hours:
+        #         minutes += hours * 60
+        #     duration = '{:02d}:{:02d}'.format(minutes, seconds)
+        #     result_text += f"**{k + 1}.** [*{v['title']}* | {v['uploader']}]({v['url']})  ``{duration}``\n"
+        # embed = discord.Embed(title="Search results", description=result_text, color=0x79b1c8)
+        # await ctx.send(embed=embed)
 
     @commands.command(name="leave", aliases=['l', '나가', 'ㄴㄱ'])
     async def leave(self, ctx):
