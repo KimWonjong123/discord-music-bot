@@ -164,8 +164,9 @@ class Music(commands.Cog):
         for item in video_list:
             duration = item['duration']
             seconds, duration = duration % 60, duration // 60
-            minutes = duration % 60
-            duration = '{:02d}:{:02d}'.format(minutes, seconds)
+            minutes, duration = duration % 60, duration // 60
+            minutes += 60 * duration
+            duration = '{:d}:{:02d}'.format(minutes, seconds)
             result.append(info_to_dict(item['title'],
                                        item['uploader'],
                                        item['view_count'],
