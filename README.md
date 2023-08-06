@@ -3,7 +3,11 @@
 
 
 ## before start
-requirements.txt 설치 후 youtube_dl/extractor/youtube.py의 1794번 라인을 다음 코드로 교체
-```python
-'uploader_id': self._search_regex(r'/(?:channel/|user/|@)([^/?&#]+)', owner_profile_url, 'uploader id', default=None),
+프로젝트 내 .env 파일 생성 후 다음 내용 추가
+```
+TOKEN={YOUR_DISCORD_APPLICATION_TOKEN}
+WHITELIST={SOME_DISCORD_IDS}
+FILTERS={SOME_KEYWORDS_TO_FILTER}
+COMMAND_PREFIX={PREFIX_KEYWORD}
+SEARCH_PAGE_SIZE={PAGE_SIZE: int}
 ```
