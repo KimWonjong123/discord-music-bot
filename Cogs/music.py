@@ -411,7 +411,6 @@ class Music(commands.Cog):
 
     @commands.command(name="voice_info", help="Shows the current voice client info")
     async def voice_info(self, ctx):
-        source_url = ctx.voice_client.source._process.args[8]
         voice_client = ctx.voice_client
         if voice_client.is_connected():
             embed = discord.Embed(title="Voice Client Info", color=discord.Color.red())
