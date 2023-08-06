@@ -6,6 +6,8 @@ from discord.ext import commands
 from yt_dlp import YoutubeDL
 from dotenv import load_dotenv
 
+from Cogs.utils.ytdl import YTDL
+
 load_dotenv()
 
 filters = list(os.getenv("FILTERS").split(","))
@@ -133,12 +135,13 @@ class Music(commands.Cog):
             return False
         return {"source": info["url"], "title": info["title"]}
 
-    def search_list(self, arg, quantity):
-        with YoutubeDL(self.YDL_OPTIONS) as ydl:
+    async def search_list(self, arg, quantity):
+        with YTDL(self.YDL_OPTIONS) as ydl:
             try:
-                info = ydl.extract_info(f"ytsearch{quantity}:{arg}", download=False)[
-                    "entries"
-                ]
+                info = ydl.extract_urls(f"ytsearch{quantity}:{arg}", download=False)["entries"]
+                for entry in info:
+                    if 'shorts' in entry['url'] or entry['duration'] == '0':
+                        entry = ydl.extract_info(f"ytsearch:{entry['url']}", download=False)["entries"][0]
             except Exception as e:
                 return False
         for entry in info:
@@ -179,10 +182,10 @@ class Music(commands.Cog):
     @commands.command(name="search", alliases=["검색", "ㄱㅅ"])
     async def search_videos(self, ctx, *args):
         query = " ".join(args)
-        video_list = self.search_list(query, int(os.getenv("SEARCH_PAGE_SIZE")))
+        video_list = await self.search_list(query, int(os.getenv("SEARCH_PAGE_SIZE")))
         result = []
         for item in video_list:
-            duration = item["duration"]
+            duration = int(item["duration"])
             seconds, duration = duration % 60, duration // 60
             minutes, duration = duration % 60, duration // 60
             minutes += 60 * duration
@@ -191,7 +194,7 @@ class Music(commands.Cog):
                 info_to_dict(
                     item["title"],
                     item["uploader"],
-                    item["original_url"],
+                    item["url"],
                     item["thumbnails"][0]["url"],
                     duration,
                 )
