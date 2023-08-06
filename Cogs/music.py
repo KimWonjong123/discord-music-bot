@@ -177,15 +177,16 @@ class Music(commands.Cog):
         return info
 
     def play_next(self, ctx):
-        self.now_playing = None
         if len(self.queue) > 0:
             m_url = self.queue[0][0]["source"]
+            self.now_playing = self.queue[0][0]["title"]
             self.queue.pop(0)
             ctx.voice_client.play(
                 FFmpegPCMAudio(m_url, **self.FFMPEG_OPTS),
                 after=lambda e: self.play_next(ctx),
             )
         else:
+            self.now_playing = None
             self.is_playing = False
 
     @commands.command(name="join", aliases=["j", "참가", "ㅊㄱ", "들어와", "ㄷㅇㄹ"])
