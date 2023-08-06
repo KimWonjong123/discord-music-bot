@@ -1,6 +1,7 @@
 import asyncio
 import os
 import discord
+import concurrent.futures
 from discord import FFmpegPCMAudio
 from discord.ext import commands
 from yt_dlp import YoutubeDL
@@ -122,6 +123,23 @@ class Music(commands.Cog):
             "options": "-vn",
         }
 
+
+    def fetch_shorts(self, shorts):
+        url = f"https://www.youtube.com/watch?v={shorts['id']}"
+        with YoutubeDL(self.YDL_OPTIONS) as ydl:
+            try:
+                info = ydl.extract_info(f"ytsearch:{url}", download=False)["entries"][0]
+            except Exception as e:
+                return False
+        if check_filters(info):
+            return False
+        return info
+
+    def handle_shorts(self, shorts_list):
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            results = executor.map(self.fetch_shorts, shorts_list)
+        return results
+
     def search(self, arg):
         with YoutubeDL(self.YDL_OPTIONS) as ydl:
             try:
@@ -132,13 +150,19 @@ class Music(commands.Cog):
             return False
         return {"source": info["url"], "title": info["title"]}
 
-    async def search_list(self, arg, quantity):
+    def search_list(self, arg, quantity):
         with YTDL(self.YDL_OPTIONS) as ydl:
             try:
-                info = ydl.extract_urls(f"ytsearch{quantity}:{arg}", download=False)["entries"]
-                for entry in info:
-                    if 'shorts' in entry['url'] or entry['duration'] == '0':
-                        entry = ydl.extract_info(f"ytsearch:{entry['url']}", download=False)["entries"][0]
+                info = list(ydl.extract_urls(f"ytsearch{quantity}:{arg}", download=False)["entries"])
+                shorts = []
+                for i, entry in enumerate(info):
+                    if 'shorts' in entry['url']:
+                        shorts.append((i,entry))
+                if len(shorts) > 0:
+                    data = list(self.handle_shorts(list(map(lambda x: x[1], shorts))))
+                    for i, entry in enumerate(data):
+                        entry['url'] = entry['original_url']
+                        info[shorts[i][0]] = entry
             except Exception as e:
                 return False
         for entry in info:
@@ -179,7 +203,7 @@ class Music(commands.Cog):
     @commands.command(name="search", alliases=["검색", "ㄱㅅ"])
     async def search_videos(self, ctx, *args):
         query = " ".join(args)
-        video_list = await self.search_list(query, int(os.getenv("SEARCH_PAGE_SIZE")))
+        video_list = self.search_list(query, int(os.getenv("SEARCH_PAGE_SIZE")))
         result = []
         for item in video_list:
             duration = int(item["duration"])
