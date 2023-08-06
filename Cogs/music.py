@@ -157,12 +157,18 @@ class Music(commands.Cog):
                 shorts = []
                 for i, entry in enumerate(info):
                     if 'shorts' in entry['url']:
-                        shorts.append((i,entry))
+                        shorts.append((i, entry))
                 if len(shorts) > 0:
                     data = list(self.handle_shorts(list(map(lambda x: x[1], shorts))))
                     for i, entry in enumerate(data):
-                        entry['url'] = entry['original_url']
-                        info[shorts[i][0]] = entry
+                        if entry:
+                            entry['url'] = entry['original_url']
+                            info[shorts[i][0]] = entry
+                        else:
+                            data[i] = None
+                    for i, entry in enumerate(data):
+                        if not entry:
+                            info.pop(shorts[i][0])
             except Exception as e:
                 return False
         for entry in info:
