@@ -123,7 +123,6 @@ class Music(commands.Cog):
             "options": "-vn",
         }
 
-
     def fetch_shorts(self, shorts):
         url = f"https://www.youtube.com/watch?v={shorts['id']}"
         with YoutubeDL(self.YDL_OPTIONS) as ydl:
@@ -148,7 +147,10 @@ class Music(commands.Cog):
                 return False
         if check_filters(info):
             return False
-        return {"source": info["url"], "title": info["title"]}
+        return {"source": info["url"],
+                "title": info["title"],
+                "original_url": info["original_url"],
+                "thumbnail": info["thumbnails"][0]['url'],}
 
     def search_list(self, arg, quantity):
         with YTDL(self.YDL_OPTIONS) as ydl:
@@ -175,19 +177,6 @@ class Music(commands.Cog):
             if check_filters(entry):
                 info.remove(entry)
         return info
-
-    def play_next(self, ctx):
-        if len(self.queue) > 0:
-            m_url = self.queue[0][0]["source"]
-            self.now_playing = self.queue[0][0]["title"]
-            self.queue.pop(0)
-            ctx.voice_client.play(
-                FFmpegPCMAudio(m_url, **self.FFMPEG_OPTS),
-                after=lambda e: self.play_next(ctx),
-            )
-        else:
-            self.now_playing = None
-            self.is_playing = False
 
     @commands.command(name="join", aliases=["j", "참가", "ㅊㄱ", "들어와", "ㄷㅇㄹ"])
     async def join(self, ctx):
@@ -245,22 +234,35 @@ class Music(commands.Cog):
             return
         await callback(ctx)
 
+    async def play_song(self, ctx, song):
+        voice_client = ctx.voice_client
+        m_url = song["source"]
+        voice_client.play(
+            FFmpegPCMAudio(m_url, **self.FFMPEG_OPTS),
+            after=lambda e: self.play_next(ctx),
+        )
+        embed = discord.Embed(
+            title="Now Playing",
+            description=f"### [{song['title']}]({song['original_url']})",
+            color=0x79B1C8,
+        )
+        embed.set_thumbnail(url=song["thumbnail"])
+        embed.add_field(name="Requested by", value=f"{song['requestor'].global_name}")
+        await asyncio.create_task(ctx.send(embed=embed))
+        self.now_playing = song
+
+    async def play_next(self, ctx):
+        if len(self.queue) > 0:
+            song = self.queue.pop()
+            asyncio.create_task(self.play_song(ctx, song))
+        else:
+            self.now_playing = None
+            self.is_playing = False
+
     async def play_music(self, ctx):
         if len(self.queue) > 0:
-            voice_client = ctx.voice_client
-            m_url = self.queue[0][0]["source"]
-            try:
-                voice_client.play(
-                    FFmpegPCMAudio(m_url, **self.FFMPEG_OPTS),
-                    after=lambda e: self.play_next(ctx),
-                )
-                await asyncio.create_task(
-                    ctx.send(f"Now playing {self.queue[0][0]['title']}")
-                )
-                self.now_playing = self.queue[0][0]["title"]
-            except Exception as err:
-                print(err)
-            self.queue.pop(0)
+            song = self.queue.pop()
+            asyncio.create_task(self.play_song(ctx, song))
 
     @commands.command(
         name="play",
@@ -294,10 +296,18 @@ class Music(commands.Cog):
                     "Could not download the song. Incorrect format try another keyword"
                 )
             else:
-                await asyncio.create_task(
-                    ctx.send(f"Added {song['title']} to the queue")
+                song['requestor'] = ctx.author
+                embed = discord.Embed(
+                    title="Added to queue",
+                    description=f"### [{song['title']}]({song['original_url']})",
+                    color=0x79B1C8,
                 )
-                self.queue.append([song, voice_channel])
+                embed.set_thumbnail(url=song["thumbnail"])
+                embed.add_field(name="Requested by", value=f"{song['requestor'].global_name}")
+                await asyncio.create_task(
+                    ctx.send(embed=embed)
+                )
+                self.queue.append(song)
                 if not voice_client.is_playing():
                     await self.play_music(ctx)
 
@@ -370,13 +380,15 @@ class Music(commands.Cog):
     async def queue_info(self, ctx):
         voice_client = ctx.voice_client
         if voice_client.is_connected():
-            embed = discord.Embed(title="Queue", color=discord.Color.red())
-            retval = ""
-            for i in range(len(self.queue)):
-                retval = f"{i + 1}. {self.queue[i][0]['title']}"
-                embed.add_field(name=retval, value="", inline=False)
-            if retval == "":
-                embed.add_field(name="Queue is currently empty", value="", inline=False)
+            description = ""
+            for i, song in enumerate(self.queue):
+                description += (f"**{i + 1}. [{song['title']}]({song['original_url']})**"
+                                f"Requested by {song['requestor'].global_name}\n\n")
+            if description == "":
+                description = "Queue is currently empty."
+            embed = discord.Embed(title="Queue",
+                                  description=description,
+                                  color=0x79B1C8,)
             await ctx.send(embed=embed)
         else:
             await ctx.send("Not connected to any voice channel")
@@ -400,15 +412,22 @@ class Music(commands.Cog):
         help="Shows the current playing song",
     )
     async def now_playing(self, ctx):
-        embed = discord.Embed(
-            title="Now Playing", description="", color=discord.Color.red()
-        )
         voice_client = ctx.voice_client
         if voice_client is not None and voice_client.is_connected() and self.now_playing is not None:
-            embed.add_field(name="Song", value=self.now_playing, inline=False)
-            await ctx.send(embed=embed)
+            embed = discord.Embed(
+                title="Now Playing",
+                description=f"### [{self.now_playing['title']}]({self.now_playing['original_url']})",
+                color=0x79B1C8,
+            )
+            embed.set_thumbnail(url=self.now_playing["thumbnail"])
+            embed.add_field(name="Requested by", value=f"{self.now_playing['requestor'].global_name}")
+            await asyncio.create_task(ctx.send(embed=embed))
         else:
-            embed.add_field(name="No song playing", value="", inline=False)
+            embed = discord.Embed(
+                title="Now Playing",
+                description=f"No song playing.",
+                color=0x79B1C8,
+            )
             await ctx.send(embed=embed)
 
     @commands.command(name="voice_info", help="Shows the current voice client info")
