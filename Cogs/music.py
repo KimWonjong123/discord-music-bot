@@ -400,15 +400,16 @@ class Music(commands.Cog):
         help="Shows the current playing song",
     )
     async def now_playing(self, ctx):
+        embed = discord.Embed(
+            title="Now Playing", description="", color=discord.Color.red()
+        )
         voice_client = ctx.voice_client
-        if voice_client.is_connected() and self.now_playing is not None:
-            embed = discord.Embed(
-                title="Now Playing", description="", color=discord.Color.red()
-            )
+        if voice_client is not None and voice_client.is_connected() and self.now_playing is not None:
             embed.add_field(name="Song", value=self.now_playing, inline=False)
             await ctx.send(embed=embed)
         else:
-            await ctx.send("No songs playing")
+            embed.add_field(name="No song playing", value="", inline=False)
+            await ctx.send(embed=embed)
 
     @commands.command(name="voice_info", help="Shows the current voice client info")
     async def voice_info(self, ctx):
