@@ -253,7 +253,7 @@ class Music(commands.Cog):
 
     async def play_next(self, ctx):
         if len(self.queue) > 0:
-            song = self.queue.pop()
+            song = self.queue.pop(0)
             asyncio.create_task(self.play_song(ctx, song))
         else:
             self.now_playing = None
@@ -261,7 +261,7 @@ class Music(commands.Cog):
 
     async def play_music(self, ctx):
         if len(self.queue) > 0:
-            song = self.queue.pop()
+            song = self.queue.pop(0)
             asyncio.create_task(self.play_song(ctx, song))
 
     @commands.command(
