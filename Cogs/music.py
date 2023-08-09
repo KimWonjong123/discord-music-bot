@@ -110,9 +110,6 @@ class Music(commands.Cog):
     def __init__(self, app):
         self.app = app
         self.queue = []
-        self.voice = None
-        self.is_playing = False
-        self.is_paused = False
         self.now_playing = None
         self.YDL_OPTIONS = {
             "format": "bestaudio",
@@ -225,7 +222,7 @@ class Music(commands.Cog):
             self.queue.clear()
             self.now_playing = None
             try:
-                self.voice.stop()
+                ctx.voice_client.stop()
             except Exception:
                 pass
             await asyncio.create_task(ctx.voice_client.disconnect(force=True))
@@ -257,7 +254,6 @@ class Music(commands.Cog):
             asyncio.create_task(self.play_song(ctx, song))
         else:
             self.now_playing = None
-            self.is_playing = False
 
     async def play_music(self, ctx):
         if len(self.queue) > 0:
@@ -319,11 +315,11 @@ class Music(commands.Cog):
     async def pause(self, ctx):
         voice_client = ctx.voice_client
         if (
-            voice_client.channel == ctx.author.voice.channel
-            and ctx.author.voice is not None
+            ctx.author.voice is not None
+            and voice_client.channel == ctx.author.voice.channel
         ):
             if voice_client.is_connected() and voice_client.is_playing():
-                self.voice.pause()
+                ctx.voice_client.pause()
             else:
                 await ctx.send("Not connected to any voice channel or not playing")
         else:
