@@ -120,7 +120,7 @@ class Music(commands.Cog):
             "options": "-vn",
         }
 
-    def fetch_shorts(self, shorts):
+    def handle_shorts(self, shorts):
         url = f"https://www.youtube.com/watch?v={shorts['id']}"
         with YoutubeDL(self.YDL_OPTIONS) as ydl:
             try:
@@ -131,17 +131,26 @@ class Music(commands.Cog):
             return False
         return info
 
-    def handle_shorts(self, shorts_list):
+    def fetch_shorts(self, shorts_list):
         with concurrent.futures.ThreadPoolExecutor() as executor:
-            results = executor.map(self.fetch_shorts, shorts_list)
+            results = executor.map(self.handle_shorts, shorts_list)
         return results
 
-    def search(self, arg):
-        with YoutubeDL(self.YDL_OPTIONS) as ydl:
-            try:
-                info = ydl.extract_info(f"ytsearch:{arg}", download=False)["entries"][0]
-            except Exception as e:
-                return False
+    async def handle_search(self, arg):
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            with YoutubeDL(self.YDL_OPTIONS) as ydl:
+                try:
+                    result = executor.submit(ydl.extract_info, f"ytsearch:{arg}", download=False).result()
+                    info = result["entries"][0]
+                except Exception as e:
+                    raise e
+        return info
+
+    async def search(self, arg):
+        try:
+            info = await self.handle_search(arg)
+        except Exception as e:
+            return False
         if check_filters(info):
             return False
         return {"source": info["url"],
@@ -149,27 +158,36 @@ class Music(commands.Cog):
                 "original_url": info["original_url"],
                 "thumbnail": info["thumbnails"][0]['url'],}
 
-    def search_list(self, arg, quantity):
-        with YTDL(self.YDL_OPTIONS) as ydl:
-            try:
-                info = list(ydl.extract_urls(f"ytsearch{quantity}:{arg}", download=False)["entries"])
-                shorts = []
-                for i, entry in enumerate(info):
-                    if 'shorts' in entry['url']:
-                        shorts.append((i, entry))
-                if len(shorts) > 0:
-                    data = list(self.handle_shorts(list(map(lambda x: x[1], shorts))))
-                    for i, entry in enumerate(data):
-                        if entry:
-                            entry['url'] = entry['original_url']
-                            info[shorts[i][0]] = entry
-                        else:
-                            data[i] = None
-                    for i, entry in enumerate(data):
-                        if not entry:
-                            info.pop(shorts[i][0])
-            except Exception as e:
-                return False
+    async def handle_search_list(self, arg, quantity):
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            with YTDL(self.YDL_OPTIONS) as ydl:
+                try:
+                    result = executor.submit(ydl.extract_urls, f"ytsearch{quantity}:{arg}").result()
+                    info = list(result["entries"])
+                except Exception as e:
+                    raise e
+        return info
+
+    async def search_list(self, arg, quantity):
+        try:
+            info = await self.handle_search_list(arg, quantity)
+            shorts = []
+            for i, entry in enumerate(info):
+                if 'shorts' in entry['url']:
+                    shorts.append((i, entry))
+            if len(shorts) > 0:
+                data = list(self.fetch_shorts(list(map(lambda x: x[1], shorts))))
+                for i, entry in enumerate(data):
+                    if entry:
+                        entry['url'] = entry['original_url']
+                        info[shorts[i][0]] = entry
+                    else:
+                        data[i] = None
+                for i, entry in enumerate(data):
+                    if not entry:
+                        info.pop(shorts[i][0])
+        except Exception as e:
+            return False
         for entry in info:
             if check_filters(entry):
                 info.remove(entry)
@@ -196,7 +214,7 @@ class Music(commands.Cog):
     @commands.command(name="search", alliases=["검색", "ㄱㅅ"])
     async def search_videos(self, ctx, *args):
         query = " ".join(args)
-        video_list = self.search_list(query, int(os.getenv("SEARCH_PAGE_SIZE")))
+        video_list = await self.search_list(query, int(os.getenv("SEARCH_PAGE_SIZE")))
         result = []
         for item in video_list:
             duration = int(item["duration"])
@@ -291,7 +309,7 @@ class Music(commands.Cog):
         if voice_client.is_paused():
             voice_client.resume()
         else:
-            song = self.search(query)
+            song = await self.search(query)
             if not song:
                 await ctx.send(
                     "Could not download the song. Incorrect format try another keyword"

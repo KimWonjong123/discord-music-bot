@@ -7,11 +7,7 @@ class YTDL(YoutubeDL):
     def extract_urls(
         self,
         url,
-        download=True,
-        ie_key=None,
-        extra_info=None,
         process=True,
-        force_generic_extractor=False,
     ):
         ie = self.get_info_extractor("YoutubeSearch")
         self._apply_header_cookies(url)
