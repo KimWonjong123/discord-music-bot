@@ -248,10 +248,15 @@ class Music(commands.Cog):
         await asyncio.create_task(ctx.send(embed=embed))
         self.now_playing = song
 
-    async def play_next(self, ctx):
+    def play_next(self, ctx):
         if len(self.queue) > 0:
+            voice_client = ctx.voice_client
             song = self.queue.pop(0)
-            asyncio.create_task(self.play_song(ctx, song))
+            m_url = song["source"]
+            voice_client.play(
+                FFmpegPCMAudio(m_url, **self.FFMPEG_OPTS),
+                after=lambda e: self.play_next(ctx),
+            )
         else:
             self.now_playing = None
 
