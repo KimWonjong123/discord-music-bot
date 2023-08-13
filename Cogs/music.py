@@ -275,6 +275,14 @@ class Music(commands.Cog):
                 FFmpegPCMAudio(m_url, **self.FFMPEG_OPTS),
                 after=lambda e: self.play_next(ctx),
             )
+            embed = discord.Embed(
+                title="Now Playing",
+                description=f"### [{song['title']}]({song['original_url']})",
+                color=0x79B1C8,
+            )
+            embed.set_thumbnail(url=song["thumbnail"])
+            embed.add_field(name="Requested by", value=f"{song['requestor'].global_name}")
+            asyncio.run_coroutine_threadsafe(ctx.send(embed=embed), ctx.bot.loop)
         else:
             self.now_playing = None
 
