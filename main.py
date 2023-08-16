@@ -24,9 +24,16 @@ def check_owner(ctx):
 
 async def load_extensions():
     with os.scandir("Cogs") as entries:
+        print("========== LOADING EXTENSIONS =========="
+              "\n========================================"
+              )
         for entry in entries:
+            print(f"Loading {entry.name}...")
             if entry.is_file() and entry.name.endswith(".py"):
                 await app.load_extension(f"Cogs.{entry.name[:-3]}")
+        print("======== EXTENSION LOADING DONE ========"
+              "\n"
+              )
 
 
 @app.command(name="reload")
