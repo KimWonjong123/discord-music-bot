@@ -42,11 +42,7 @@ async def callback(ctx):
 
 
 def check_filters(info):
-    for k in filters:
-        for s in info.values():
-            if k in str(s).lower():
-                return True
-
+    return False
 
 def info_to_dict(title, uploader, original_url, thumbnail, duration):
     result = {
