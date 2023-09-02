@@ -18,6 +18,29 @@ app = commands.Bot(
 )
 
 
+@app.event
+async def on_ready():
+    print(f"Logged in as {app.user.name} ({app.user.id})")
+    print("========================================"
+          "\n"
+          "========== MUSIC BOT STARTED!! =========="
+          "\n"
+          "========================================"
+          )
+
+
+@app.event
+async def on_voice_state_update(member, before, after):
+    if member.bot:
+        return
+    if before.channel is not None:
+        members = before.channel.members
+        if app.user in members:
+            if all(member.bot for member in members):
+                await app.voice_clients[0].disconnect(force=True)
+
+
+
 def check_owner(ctx):
     return ctx.author.id in list(map(int, os.getenv("WHITELIST").split(",")))
 
@@ -91,7 +114,6 @@ async def unload_function(extension=None):
 async def main():
     async with app:
         await load_extensions()
-        print("========== MUSIC BOT STARTED!! ==========")
         await app.start(os.getenv("TOKEN"), reconnect=True)
 
 
