@@ -114,6 +114,7 @@ class Music(commands.Cog):
         self.YDL_OPTIONS = {
             "format": "bestaudio",
             "noplaylist": "True",
+            "buffer-size": "4k",
         }
         self.FFMPEG_OPTS = {
             "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
