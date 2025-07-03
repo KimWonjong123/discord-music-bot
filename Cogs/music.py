@@ -2,6 +2,7 @@ import asyncio
 import os
 import discord
 import concurrent.futures
+import urllib.parse as urlparse
 from discord import FFmpegPCMAudio
 from discord.ext import commands
 from yt_dlp import YoutubeDL
@@ -111,6 +112,7 @@ class Music(commands.Cog):
             "format": "bestaudio",
             "noplaylist": "True",
             "buffer-size": "4k",
+            "cookiefile": "~/cookies.txt"
         }
         self.FFMPEG_OPTS = {
             "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
@@ -295,6 +297,19 @@ class Music(commands.Cog):
     )
     async def play(self, ctx, *args):
         query = " ".join(args)
+
+        if 'youtube.com' in query:
+            url = urlparse.urlparse(query)
+            params = url.query.split('&')
+            video_id = None
+            for param in params:
+                if param.startswith('v='):
+                    video_id = urlparse.parse_qs(param).get('v')
+                    break
+            if video_id is None:
+                raise ValueError('Invalid url format')
+            query = f'{url.scheme}://{url.netloc}{url.path}?v={video_id}'
+
         voice_client = ctx.voice_client
         if ctx.author.voice is None:
             await ctx.send("Join voice channel first")
