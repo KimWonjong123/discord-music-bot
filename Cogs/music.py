@@ -111,13 +111,19 @@ class Music(commands.Cog):
         self.YDL_OPTIONS = {
             "format": "bestaudio",
             "noplaylist": "True",
-            "buffer-size": "4k",
-            "cookiefile": "~/cookies.txt"
+             "buffer-size": "4k",
+             "cookiefile": "~/cookies.txt",
+             "extractor_args": {
+                "youtube": {
+                    "player_client": ["mweb"],
+                    "po_token": ["mweb.gvs+Ml9sEXVW6KmvoWwt2bqJAjj9K4hi9ni2WE8ucNCV2dlVaOGF4H9zADcH4mvIMkkyqlzCNixf8oFZv3hFjnxL2jJbKD60wjNo1AEp3l-XVsFnWwX4gMlvA4UMxLCqgZ9MiQ=="]
+                }
+            }
         }
         self.FFMPEG_OPTS = {
-            "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
-            "options": "-vn",
-        }
+                "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+                "options": "-vn",
+                }
 
     def handle_shorts(self, shorts):
         url = f"https://www.youtube.com/watch?v={shorts['id']}"
