@@ -116,7 +116,7 @@ class Music(commands.Cog):
              "extractor_args": {
                 "youtube": {
                     "player_client": ["mweb"],
-                    "po_token": ["mweb.gvs+Ml9sEXVW6KmvoWwt2bqJAjj9K4hi9ni2WE8ucNCV2dlVaOGF4H9zADcH4mvIMkkyqlzCNixf8oFZv3hFjnxL2jJbKD60wjNo1AEp3l-XVsFnWwX4gMlvA4UMxLCqgZ9MiQ=="]
+                    "po_token": list(os.getenv("FILTERS").split(","))
                 }
             }
         }
