@@ -1,6 +1,6 @@
 discord.py
 PyNaCl
-yt_dlp
+yt-dlp[default]
 isodate
 google-api-python-client
 python-dotenv

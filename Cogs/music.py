@@ -111,14 +111,16 @@ class Music(commands.Cog):
         self.YDL_OPTIONS = {
             "format": "bestaudio",
             "noplaylist": "True",
-             "buffer-size": "4k",
-             "cookiefile": "~/cookies.txt",
-             "extractor_args": {
-                "youtube": {
-                    "player_client": ["mweb"],
-                    "po_token": list(os.getenv("PO_TOKENS").split(","))
-                }
-            }
+            "buffer-size": "4k",
+            "cookiefile": "~/cookies.txt",
+            "js-runtimes": "deno:/home/ubuntu/.deno/bin/deno",
+            "remote-components": "ejs:npm"
+            #"extractor_args": {
+            #    "youtube": {
+            #        "player_client": ["mweb"],
+            #        "po_token": list(os.getenv("PO_TOKENS").split(","))
+            #    }
+            #}
         }
         self.FFMPEG_OPTS = {
                 "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
